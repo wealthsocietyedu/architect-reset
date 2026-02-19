@@ -1938,6 +1938,177 @@
     document.getElementById('logBody').appendChild(tr);
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // LOCALSTORAGE - SAVE ALL USER PROGRESS
+  // ═══════════════════════════════════════════════════════════════
+  
+  // Save data to localStorage
+  function saveToStorage(key, value) {
+    try {
+      localStorage.setItem('architect_' + key, JSON.stringify(value));
+    } catch(e) {
+      console.error('Storage error:', e);
+    }
+  }
+  
+  // Load data from localStorage
+  function loadFromStorage(key) {
+    try {
+      const data = localStorage.getItem('architect_' + key);
+      return data ? JSON.parse(data) : null;
+    } catch(e) {
+      console.error('Storage error:', e);
+      return null;
+    }
+  }
+  
+  // Save all text inputs
+  function saveAllInputs() {
+    document.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach((input, index) => {
+      if (input.value) {
+        saveToStorage('input_' + index, input.value);
+      }
+    });
+  }
+  
+  // Load all text inputs
+  function loadAllInputs() {
+    document.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach((input, index) => {
+      const saved = loadFromStorage('input_' + index);
+      if (saved) {
+        input.value = saved;
+      }
+    });
+  }
+  
+  // Save checkbox states
+  function saveCheckboxes() {
+    document.querySelectorAll('.checklist-item').forEach((item, index) => {
+      saveToStorage('checkbox_' + index, item.classList.contains('checked'));
+    });
+  }
+  
+  // Load checkbox states
+  function loadCheckboxes() {
+    document.querySelectorAll('.checklist-item').forEach((item, index) => {
+      const saved = loadFromStorage('checkbox_' + index);
+      if (saved === true) {
+        item.classList.add('checked');
+      }
+    });
+  }
+  
+  // Save toggle button states
+  function saveToggles() {
+    document.querySelectorAll('.toggle-btn').forEach((btn, index) => {
+      if (btn.classList.contains('selected-yes') || btn.classList.contains('selected-no')) {
+        const state = btn.classList.contains('selected-yes') ? 'yes' : 'no';
+        saveToStorage('toggle_' + index, state);
+      }
+    });
+  }
+  
+  // Load toggle button states
+  function loadToggles() {
+    document.querySelectorAll('.toggle-btn').forEach((btn, index) => {
+      const saved = loadFromStorage('toggle_' + index);
+      if (saved) {
+        btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => {
+          b.classList.remove('selected-yes', 'selected-no');
+        });
+        btn.classList.add(saved === 'yes' ? 'selected-yes' : 'selected-no');
+      }
+    });
+  }
+  
+  // Save completed days
+  function saveCompletedDays() {
+    saveToStorage('completedDays', Array.from(completedDays));
+  }
+  
+  // Load completed days
+  function loadCompletedDays() {
+    const saved = loadFromStorage('completedDays');
+    if (saved && Array.isArray(saved)) {
+      saved.forEach(day => {
+        completedDays.add(day);
+        const btnId = 'completeDay' + day;
+        const btn = document.getElementById(btnId);
+        if (btn) {
+          btn.textContent = '✓ DAY ' + day + ' COMPLETE';
+          btn.classList.add('day-complete');
+        }
+        const tabMap = {1:'day1',2:'day2',3:'day3',4:'day4',5:'day5',6:'day6',7:'day7'};
+        const tab = document.querySelector('[data-tab="' + tabMap[day] + '"]');
+        if (tab) tab.classList.add('tab-done');
+      });
+      updateProgress();
+    }
+  }
+  
+  // Save dropdown/select values
+  function saveSelects() {
+    document.querySelectorAll('select').forEach((select, index) => {
+      if (select.value) {
+        saveToStorage('select_' + index, select.value);
+      }
+    });
+  }
+  
+  // Load dropdown/select values
+  function loadSelects() {
+    document.querySelectorAll('select').forEach((select, index) => {
+      const saved = loadFromStorage('select_' + index);
+      if (saved) {
+        select.value = saved;
+      }
+    });
+  }
+  
+  // Auto-save on any input change
+  document.addEventListener('input', function(e) {
+    if (e.target.matches('input, textarea, select')) {
+      saveAllInputs();
+      saveSelects();
+    }
+  });
+  
+  // Auto-save on checkbox clicks
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.checklist-item')) {
+      setTimeout(saveCheckboxes, 100);
+    }
+    if (e.target.matches('.toggle-btn')) {
+      setTimeout(saveToggles, 100);
+    }
+  });
+  
+  // Override completeDay to save
+  const originalCompleteDay = completeDay;
+  window.completeDay = function(dayNum, btnId, tabId) {
+    originalCompleteDay(dayNum, btnId, tabId);
+    saveCompletedDays();
+  };
+  
+  // Load all saved data on page load
+  window.addEventListener('load', function() {
+    loadAllInputs();
+    loadCheckboxes();
+    loadToggles();
+    loadSelects();
+    loadCompletedDays();
+  });
+  
+  // Periodic auto-save every 10 seconds
+  setInterval(function() {
+    saveAllInputs();
+    saveCheckboxes();
+    saveToggles();
+    saveSelects();
+  }, 10000);
+  
+  // ═══════════════════════════════════════════════════════════════
+
   updateProgress();
 </script>
 </body>
